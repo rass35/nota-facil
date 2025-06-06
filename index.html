@@ -3,255 +3,150 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Notas com Alarme</title>
+  <title>Gerenciador de Notas</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f5f5f5;
-    }
-    h1 {
-      text-align: center;
-    }
-    form {
-      margin-bottom: 20px;
-      background: white;
-      padding: 15px;
-      border-radius: 6px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    input, textarea, button {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      font-size: 1em;
-      box-sizing: border-box;
-    }
-    textarea {
-      resize: vertical;
-      min-height: 60px;
-    }
-    button {
-      cursor: pointer;
-      background: #007bff;
-      color: white;
-      border: none;
-      font-weight: bold;
-      transition: background-color 0.3s ease;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .notes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      justify-content: center;
-    }
-    .note {
-      background: white;
-      padding: 15px;
-      border-radius: 6px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-      width: 280px;
-      position: relative;
-      word-wrap: break-word;
-      white-space: pre-wrap;
-    }
-    .note h3 {
-      margin-top: 0;
-      margin-bottom: 6px;
-    }
-    .note p {
-      margin-bottom: 0;
-    }
-    .note .buttons {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-    .note button {
-      width: auto;
-      padding: 6px 10px;
-      margin-left: 5px;
-      font-size: 0.9em;
-      border-radius: 4px;
-    }
-    .note button.edit-btn {
-      background: #28a745;
-      color: white;
-      border: none;
-    }
-    .note button.delete-btn {
-      background: #dc3545;
-      color: white;
-      border: none;
-    }
-    #clearBtn {
-      max-width: 400px;
-      margin: 0 auto 20px auto;
-      background: #ff6600;
-    }
-    #clearBtn:hover {
-      background: #cc5200;
+    body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+    form { max-width: 400px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; }
+    input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; }
+    button.save { background-color: #007bff; color: white; }
+    button.delete { background-color: #dc3545; color: white; margin-left: 5px; }
+    button.edit { background-color: #28a745; color: white; margin-left: 5px; }
+    button.favorite { background-color: #ffc107; color: black; margin-left: 5px; }
+    .note { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; position: relative; }
+    .note-title { font-weight: bold; margin-bottom: 5px; }
+    .favorite .note-title {
+      color: #d39e00; /* amarelo escuro para nota favorita */
     }
   </style>
 </head>
 <body>
 
-<h1>Notas</h1>
+<h1>Nota Fácil</h1>
 
-<form id="noteForm" autocomplete="off">
+<form id="noteForm">
   <input type="hidden" id="noteId" />
   <input type="text" id="noteTitle" placeholder="Título da nota" required />
-  <textarea id="noteContent" placeholder="Conteúdo da nota" required></textarea>
-  <button type="submit">Salvar Nota</button>
+  <textarea id="noteContent" placeholder="Conteúdo da nota" rows="4" required></textarea>
+  <button type="submit" class="save">Salvar Nota</button>
 </form>
 
-<button id="clearBtn" aria-label="Limpar todas as notas">Limpar todas as notas</button>
-
-<div class="notes" id="notesContainer"></div>
+<div id="notesContainer"></div>
 
 <script>
-  const form = document.getElementById('noteForm');
+  const noteForm = document.getElementById('noteForm');
   const noteIdInput = document.getElementById('noteId');
-  const titleInput = document.getElementById('noteTitle');
-  const contentInput = document.getElementById('noteContent');
+  const noteTitleInput = document.getElementById('noteTitle');
+  const noteContentInput = document.getElementById('noteContent');
   const notesContainer = document.getElementById('notesContainer');
-  const clearBtn = document.getElementById('clearBtn');
+
+  function getNotes() {
+    return JSON.parse(localStorage.getItem('notes') || '[]');
+  }
 
   function saveNotes(notes) {
-    try {
-      localStorage.setItem('notes', JSON.stringify(notes));
-    } catch (e) {
-      alert('Erro ao salvar notas no localStorage.');
-      console.error(e);
-    }
-  }
-
-  function loadNotes() {
-    try {
-      const notesJSON = localStorage.getItem('notes');
-      if (!notesJSON) return [];
-      return JSON.parse(notesJSON);
-    } catch {
-      return [];
-    }
-  }
-
-  function generateId() {
-    return '_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    localStorage.setItem('notes', JSON.stringify(notes));
   }
 
   function renderNotes() {
-    const notes = loadNotes();
-    notesContainer.innerHTML = '';
+    let notes = getNotes();
 
-    if (notes.length === 0) {
-      notesContainer.innerHTML = '<p>Nenhuma nota criada.</p>';
-      return;
-    }
-
-    // Construir HTML de todas as notas
-    let html = '';
-    notes.forEach(note => {
-      html += `
-        <div class="note" data-id="${note.id}">
-          <h3>${note.title}</h3>
-          <p>${note.content}</p>
-          <div class="buttons">
-            <button class="edit-btn" aria-label="Editar nota ${note.title}">Editar</button>
-            <button class="delete-btn" aria-label="Excluir nota ${note.title}">Excluir</button>
-          </div>
-        </div>
-      `;
+    // Ordenar notas para que favoritas fiquem no topo
+    notes.sort((a, b) => {
+      if (a.favorite && !b.favorite) return -1;
+      if (!a.favorite && b.favorite) return 1;
+      return 0;
     });
-    notesContainer.innerHTML = html;
-  }
 
-  // Delegação de eventos para os botões dentro do container das notas
-  notesContainer.addEventListener('click', e => {
-    if (e.target.classList.contains('edit-btn')) {
-      const noteDiv = e.target.closest('.note');
-      if (!noteDiv) return;
-      const id = noteDiv.getAttribute('data-id');
-      editNote(id);
-    } else if (e.target.classList.contains('delete-btn')) {
-      const noteDiv = e.target.closest('.note');
-      if (!noteDiv) return;
-      const id = noteDiv.getAttribute('data-id');
-      if (confirm('Confirma a exclusão desta nota?')) {
-        deleteNote(id);
-      }
-    }
-  });
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-
-    const notes = loadNotes();
-    const id = noteIdInput.value;
-    const title = titleInput.value.trim();
-    const content = contentInput.value.trim();
-
-    if (!title || !content) {
-      alert('Título e conteúdo são obrigatórios.');
+    notesContainer.innerHTML = '';
+    if (notes.length === 0) {
+      notesContainer.innerHTML = '<p>Nenhuma nota salva.</p>';
       return;
     }
+    notes.forEach(note => {
+      const noteDiv = document.createElement('div');
+      noteDiv.className = 'note';
+      if (note.favorite) noteDiv.classList.add('favorite');
+      noteDiv.dataset.id = note.id;
 
-    if (id) {
-      const noteIndex = notes.findIndex(n => n.id === id);
-      if (noteIndex !== -1) {
-        notes[noteIndex].title = title;
-        notes[noteIndex].content = content;
-      }
-    } else {
-      notes.push({
-        id: generateId(),
-        title,
-        content
+      noteDiv.innerHTML = `
+        <div class="note-title">${note.title}</div>
+        <div class="note-content">${note.content}</div>
+        <button class="favorite">${note.favorite ? '★ Favorito' : '☆ Favoritar'}</button>
+        <button class="edit">Editar</button>
+        <button class="delete">Excluir</button>
+      `;
+
+      notesContainer.appendChild(noteDiv);
+
+      // Botão excluir
+      noteDiv.querySelector('.delete').addEventListener('click', () => {
+        deleteNote(note.id);
       });
-    }
 
-    saveNotes(notes);
-    renderNotes();
+      // Botão editar
+      noteDiv.querySelector('.edit').addEventListener('click', () => {
+        editNote(note.id);
+      });
 
-    form.reset();
-    noteIdInput.value = '';
-  });
-
-  function editNote(id) {
-    const notes = loadNotes();
-    const note = notes.find(n => n.id === id);
-    if (!note) return;
-
-    noteIdInput.value = note.id;
-    titleInput.value = note.title;
-    contentInput.value = note.content;
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Botão favoritar
+      noteDiv.querySelector('.favorite').addEventListener('click', () => {
+        toggleFavorite(note.id);
+      });
+    });
   }
 
   function deleteNote(id) {
-    let notes = loadNotes();
+    let notes = getNotes();
     notes = notes.filter(n => n.id !== id);
     saveNotes(notes);
     renderNotes();
   }
 
-  clearBtn.addEventListener('click', () => {
-    if (confirm('Tem certeza que deseja limpar todas as notas? Esta ação não pode ser desfeita.')) {
-      localStorage.removeItem('notes');
-      renderNotes();
-      form.reset();
-      noteIdInput.value = '';
+  function editNote(id) {
+    const notes = getNotes();
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+
+    noteIdInput.value = note.id;
+    noteTitleInput.value = note.title;
+    noteContentInput.value = note.content;
+    noteTitleInput.focus();
+  }
+
+  function toggleFavorite(id) {
+    let notes = getNotes();
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    note.favorite = !note.favorite;
+    saveNotes(notes);
+    renderNotes();
+  }
+
+  noteForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const id = noteIdInput.value || Date.now().toString();
+    const title = noteTitleInput.value.trim();
+    const content = noteContentInput.value.trim();
+    if (!title || !content) {
+      alert('Preencha título e conteúdo');
+      return;
     }
+
+    let notes = getNotes();
+    const existingIndex = notes.findIndex(n => n.id === id);
+    if (existingIndex > -1) {
+      // Editar nota existente
+      notes[existingIndex].title = title;
+      notes[existingIndex].content = content;
+    } else {
+      // Nova nota
+      notes.push({ id, title, content, favorite: false });
+    }
+    saveNotes(notes);
+    renderNotes();
+    noteForm.reset();
+    noteIdInput.value = '';
   });
 
   renderNotes();
